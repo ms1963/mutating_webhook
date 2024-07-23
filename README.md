@@ -17,6 +17,13 @@ Create a docker development container:
 
 	docker run -it --rm -v ${PWD}:/work -w /work debian bash
 
+**Note:**
+On Windows the equivalent to ${HOME} is %USERPROFILE%.
+When using Powershell (Get-Location).Path retrieves the current directory. There ypu may also use in PowerShell:
+$ENV:HOME = $env:USERPROFILE
+and
+$env:PWD = (Get.Location).Path
+
 #### Install certificate with cfssl:
 
 Install cfssl tools cfssl and cfssljson
