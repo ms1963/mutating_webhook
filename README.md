@@ -19,7 +19,7 @@ Create a docker development container:
 
 **Note:**
 On Windows the equivalent to ${HOME} is %USERPROFILE%.
-When using Powershell (Get-Location).Path retrieves the current directory. There ypu may also use in PowerShell:
+When using Powershell (Get-Location).Path retrieves the current directory. You may also use in PowerShell:
 $ENV:HOME = $env:USERPROFILE
 and
 $env:PWD = (Get.Location).Path
