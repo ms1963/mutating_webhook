@@ -61,8 +61,8 @@ See also files ca\_config.json and ca\_csr.json
 
 #### Creating CA\_BUNDLE and injecting it to webhook.yaml
 Create CA Bundle and add it to the template
-	ca_pem_b64="$(openssl base64 -A <"/tmp/ca.pem")"
-	
+
+	ca_pem_b64="$(openssl base64 -A <"/tmp/ca.pem")"	
 	sed -e 's@${CA_PEM_B64}@'"$ca_pem_b64"'@g' <"webhook-template.yaml"  > webhook.yaml
 
 
@@ -73,33 +73,41 @@ If you want to see what our webhook is going to deliver, look into the webhook.y
 
 ### Determining the go version used
 Run 
+
 	go version
 
 ## Test of integration
 cd to the webhook/src-directory.
 
 Copy dockerfile\_test to dockerfile
+
 	FROM golang:1.22-alpine as dev-env
 	
 	WORKDIR /app
 
 Run the following command to create a Go-development-container:
+	
 	docker build . -t webhook
 	docker run -it --rm -p 80:80 -v ${PWD}:/app webhook sh
+
 
 The webhook will serve requests on port 80.
 
 Note: If you get the error that the env variables KUBERNETES\_SERVICE\_HOST resp. KUBERNETES\_SERVICE\_PORT are not set, look to .kube/config in your home directory. Set and export the two env variables above properly.
 For example:
+
 	export KUBERNETES_SERVICE_HOST=https://127.0.0.1
 	export KUBERNETES_SERVICE_HOST=6443
+
 Run the docker command again
 
 
 Initialize Go module calling 
+	
 	go mod init mutating-webhook
 
 Write initial Go program for testing (otherwise proceed with section Mutating Webhook). 
+	
 	package main
 	
 	import (
@@ -122,7 +130,8 @@ Write initial Go program for testing (otherwise proceed with section Mutating We
 	}
 
 Execute:
-	 go run main.go
+
+	go run main.go
 
 Open a browser outside of the container and enter the URL localhost resp. localhost/mutate. Exit container!
 
@@ -139,12 +148,15 @@ Copy dockerfile\_final  to become dockerfile. Start the final development contai
 See above, when getting errors. The env variables KUBERNETES\_SERVICE\_HOST and KUBERNETES\_SERVICE\_PORT must be set correctly.
 
 In the container execute:
+	
 	apk add --no-cache curl
 	curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
 	chmod +x ./kubectl
 	mv ./kubectl /usr/local/bin/kubectl
 Now run:
+	
 	kubect get nodes
+
 … which should show one node.
 
 Get the Kubernetes Runtime Serializer that is responsible for handling events that Kubernetes sends to the webhook. In addition a new UniversalDeserializer is created as a global variable. The serializer translates K8s events to structs.
@@ -170,23 +182,25 @@ what version of client go to use.
 Note: it is necessary to get the right version of Go Client when the Kubernetes version changes (e.g. when upgrading).
 
 Install dependencies:
-Get all dependencies (i.e. Go libraries)
-	go get k8s.io/client-go@kubernetes-1.29.2
-	go get k8s.io/api@kubernetes-1.29.2
-	go get k8s.io/apimachinery@kubernetes-1.29.2
-	go get k8s.io/utils
-	go get k8s.io/api/admission/v1beta1 
-	go get k8s.io/api/core/v1
-	go get k8s.io/apimachinery/pkg/apis/meta/v1
-	go get k8s.io/apimachinery/pkg/runtime
-	go get k8s.io/apimachinery/pkg/runtime/serializer
-	go get k8s.io/client-go/kubernetes
-	go get k8s.io/client-go/rest
-	go get k8s.io/client-go/tools/clientcmd
-	go get k8s.io/client-go/util/homedir
+
+	Get all dependencies (i.e. Go libraries)
+		go get k8s.io/client-go@kubernetes-1.29.2
+		go get k8s.io/api@kubernetes-1.29.2
+		go get k8s.io/apimachinery@kubernetes-1.29.2
+		go get k8s.io/utils
+		go get k8s.io/api/admission/v1beta1 
+		go get k8s.io/api/core/v1
+		go get k8s.io/apimachinery/pkg/apis/meta/v1
+		go get k8s.io/apimachinery/pkg/runtime
+		go get k8s.io/apimachinery/pkg/runtime/serializer
+		go get k8s.io/client-go/kubernetes
+		go get k8s.io/client-go/rest
+		go get k8s.io/client-go/tools/clientcmd
+		go get k8s.io/client-go/util/homedir
 
 
 Build webhook:
+
 	go build -o webhook
 
 Define a tag for the image. Replace all <your-tag>-appearances below with an actual tag. Do not forget to change <your-tag> in deployment.yaml accordingly.
@@ -195,7 +209,9 @@ Now use existing dockerfile\_final in webhook/src after exiting the development 
 	cp dockerfile_final dockerfile
 
 In the webhook’s src-directory use the command:
+
 	docker build --platform linux/amd64 . -t <your tag>/mutating-webhook:v1
+
 Push the webhook image to the docker registry and pull it later when needed.
 
 	docker push <your-tag>/mutating-webhook:v1
@@ -208,23 +224,28 @@ In webhook-directory apply the following yaml-files.
 	kubectl apply -f deployment.yaml
 	kubectl apply -f webhook.yaml
 Now the webhook is running. To test it use a demo pod:
+	
 	kubectl apply -f demo-pod.yaml
-This yaml-file is very simple. It just uses nginx and defines the necessary label  mutating-webhook-enabled.
-	apiVersion: v1
-	kind: Pod
-	metadata:
-	  name: demo-pod
-	  labels:
-	    mutating-webhook-enabled: "true"
-	spec:
-	  containers:
-	  - name: nginx
-	    image: nginx 
 
-After it is started call 
+This yaml-file is very simple. It just uses nginx and defines the necessary label  mutating-webhook-enabled.
+		
+	apiVersion: v1
+		kind: Pod
+		metadata:
+	  	name: demo-pod
+	  	labels:
+	    	mutating-webhook-enabled: "true"
+		spec:
+	  	containers:
+	  	- name: nginx
+	   	 image: nginx 
+
+After it is started call
+ 
 	kubectl get pods --show-labels
 
 You should see a message similar to:
+		
 	demo-pod                          1/1     Running   0          13m   mutating-webhook-enabled=true,mutating-webhook=it-worked
 
 Note: Each pod that should be mutated must contain the label mutating-webhook-enable set to true.
